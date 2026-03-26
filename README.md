@@ -32,16 +32,28 @@
 
 ## 🚀 快速开始
 
-### 方法 1：作为 Qoder Skill 安装（推荐）
+### 方法 1：使用 OpenClaw 安装（推荐）
+
+```bash
+# 从 GitHub 安装
+openclaw install github:isunlifelc/pdemo
+
+# 或指定版本
+openclaw install github:isunlifelc/pdemo@v1.2.1
+```
+
+安装完成后，在 QoderWork 中自动可用。
+
+### 方法 2：作为 Qoder Skill 安装
 
 在 QoderWork 中输入：
 ```
 /install-skill-dependency
 ```
 
-然后选择此技能进行安装。
+然后搜索 `product-demo-builder` 或输入 GitHub 地址：`https://github.com/isunlifelc/pdemo`
 
-### 方法 2：手动使用
+### 方法 3：手动使用
 
 1. 克隆或下载本仓库
 2. 在浏览器中打开 `index.html`

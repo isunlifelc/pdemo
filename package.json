@@ -1,0 +1,38 @@
+{
+  "name": "product-demo-builder",
+  "version": "1.2.1",
+  "description": "可视化多页面搭建工具，类似 Figma 的产品演示页面编辑器",
+  "author": "isunlifelc",
+  "license": "MIT",
+  "type": "qoder-skill",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/isunlifelc/pdemo.git"
+  },
+  "keywords": [
+    "demo",
+    "prototype",
+    "editor",
+    "page-builder",
+    "visualization",
+    "qoder",
+    "skill"
+  ],
+  "files": [
+    "index.html",
+    "editor.html",
+    "README.md",
+    "SKILL.md"
+  ],
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx http-server -p 8000"
+  },
+  "qoder": {
+    "name": "产品Demo 搭建工具",
+    "category": "productivity",
+    "entry": "index.html",
+    "requireServer": true,
+    "serverPort": 8000
+  }
+}
