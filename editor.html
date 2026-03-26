@@ -1,0 +1,4350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞猪千问 - 编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 内嵌模式样式 */
+        body.embedded-mode {
+            background-color: #fff;
+        }
+        
+        body.embedded-mode .editor-panel {
+            width: calc(100% - 430px);
+            border-right: none;
+        }
+        
+        /* 内嵌模式下预览面板改为右侧固定显示 */
+        body.embedded-mode .preview-panel {
+            position: absolute;
+            right: 0;
+            top: 61px; /* header height */
+            bottom: 0;
+            width: 430px;
+            background: #E8E8E8;
+            border-left: 1px solid #ddd;
+            z-index: 100;
+            display: flex !important;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        body.embedded-mode .add-module-bar {
+            right: 450px;
+        }
+        
+        /* 保存按钮（内嵌模式） */
+        .save-btn {
+            padding: 8px 16px;
+            border: none;
+            background: #22c55e;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .save-btn.show {
+            display: flex;
+        }
+        
+        .save-btn:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        
+        .save-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* 左侧编辑器区域 */
+        .editor-panel {
+            width: 50%;
+            background: #fff;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .editor-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafafa;
+        }
+        
+        .editor-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .mode-switch {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .download-btn {
+            padding: 8px 16px;
+            border: none;
+            background: #6666FF;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .download-btn:hover {
+            background: #5555EE;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 102, 255, 0.3);
+        }
+        
+        .download-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .mode-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .mode-btn.active {
+            background: #6666FF;
+            color: #fff;
+            border-color: #6666FF;
+        }
+        
+        .back-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #333;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .back-btn.show {
+            display: flex;
+        }
+        
+        .back-btn:hover {
+            background: #f5f5f5;
+            border-color: #ccc;
+        }
+        
+        .back-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* 预览区返回按钮 */
+        .preview-back-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            z-index: 200;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .preview-back-bar.show {
+            display: block;
+        }
+        
+        .preview-back-btn {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .preview-back-btn:hover {
+            background: #e8e8e8;
+            border-color: #ccc;
+        }
+        
+        .preview-back-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .editor-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+        
+        .add-module-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: calc(50% + 20px);
+            background: #fff;
+            border-top: 1px solid #e0e0e0;
+            padding: 12px 20px;
+            z-index: 50;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .add-module-bar h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .module-type-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .module-type-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #333;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .module-type-btn:hover {
+            background: #6666FF;
+            color: #fff;
+            border-color: #6666FF;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 102, 255, 0.2);
+        }
+        
+        .module-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            cursor: grab;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        outline 0.3s ease;
+            max-width: 100%;
+        }
+        
+        /* 内嵌模式下调整模块项宽度 */
+        body.embedded-mode .module-item {
+            max-width: calc(100% - 430px);
+        }
+        
+        .module-item:active {
+            cursor: grabbing;
+        }
+        
+        .module-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                        opacity 0.15s ease,
+                        box-shadow 0.15s ease;
+        }
+        
+        .module-item.drag-over {
+            border-color: #6666FF;
+            border-style: dashed;
+            background: #f8f7ff;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        
+        .module-item.highlight {
+            outline: 3px solid #6666FF !important;
+            outline-offset: -3px;
+            background: rgba(102, 102, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .module-item.highlight .module-header {
+            background: #6666FF;
+            border-bottom-color: #5555EE;
+        }
+        
+        .module-item.highlight .module-name {
+            color: #fff;
+        }
+        
+        .module-item.highlight .drag-handle svg {
+            fill: #fff;
+        }
+        
+        .module-item.editing {
+            outline: 3px solid #00C853 !important;
+            outline-offset: -3px;
+            background: rgba(0, 200, 83, 0.05);
+        }
+        
+        .module-item.editing .module-header {
+            background: #00C853;
+            border-bottom-color: #00A845;
+        }
+        
+        .module-item.editing .module-name {
+            color: #fff;
+        }
+        
+        .module-item.editing .drag-handle svg {
+            fill: #fff;
+        }
+        
+        .module-item.drag-over {
+            border-color: #6666FF;
+            border-style: dashed;
+            background: #f8f7ff;
+        }
+        
+        .module-header {
+            padding: 12px 16px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .module-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .module-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .action-btn-small:hover {
+            background: #f0f0f0;
+        }
+        
+        .drag-handle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #999;
+            margin-right: 8px;
+        }
+        
+        .drag-handle svg {
+            fill: #999;
+            transition: fill 0.2s;
+        }
+        
+        .module-item.highlight .drag-handle svg {
+            fill: #fff;
+        }
+        
+        .module-item.editing .drag-handle svg {
+            fill: #fff;
+        }
+        
+        .module-body {
+            padding: 16px;
+        }
+        
+        .editable-field {
+            margin-bottom: 12px;
+        }
+        
+        .field-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        
+        .field-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        .field-input:focus {
+            outline: none;
+            border-color: #6666FF;
+        }
+        
+        textarea.field-input {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .field-row .editable-field {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        .visibility-toggle {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .visibility-toggle:hover {
+            background: #f0f0f0;
+        }
+        
+        .visibility-toggle svg {
+            width: 18px;
+            height: 18px;
+            color: #999;
+        }
+        
+        .visibility-toggle.hidden svg {
+            color: #ccc;
+        }
+        
+        .field-hidden {
+            opacity: 0.5;
+        }
+        
+        .field-hidden .field-input {
+            background: #f9f9f9;
+        }
+        
+        /* 右侧预览区域 */
+        .preview-panel {
+            width: 50%;
+            background: #E8E8E8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .phone-container {
+            width: 100%;
+            max-width: 430px;
+            background-color: #F7F8FA;
+            height: 100vh;
+            max-height: 850px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+            border-radius: 40px;
+        }
+        
+        /* 原始样式保持不变 */
+        .bottom-bg-image {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .bottom-bg-image img {
+            width: 100%;
+            display: block;
+        }
+        
+        .header-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #F7F8FA;
+            z-index: 100;
+        }
+        
+        .status-bar {
+            height: 44px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px 0 24px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .status-icons {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 16px 12px;
+        }
+        
+        .header-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+        
+        .header-icon:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-icon svg {
+            width: 24px;
+            height: 24px;
+            color: #1a1a1a;
+        }
+        
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0F131A;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .chat-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 100px 16px 120px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .chat-content::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* 预览区可拖拽模块样式 */
+        .preview-module {
+            position: relative;
+            cursor: grab;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .preview-module:active {
+            cursor: grabbing;
+        }
+        
+        .preview-module:hover {
+            outline: 2px dashed #6666FF;
+            outline-offset: 4px;
+        }
+        
+        .preview-module.dragging {
+            opacity: 0.4;
+            transform: scale(1.03);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                        opacity 0.15s ease,
+                        box-shadow 0.15s ease;
+        }
+        
+        .preview-module.drag-over-top {
+            border-top: 3px solid #6666FF;
+            transition: border-color 0.15s ease;
+        }
+        
+        .preview-module.drag-over-bottom {
+            border-bottom: 3px solid #6666FF;
+            transition: border-color 0.15s ease;
+        }
+        
+        .preview-module.drop-anim {
+            animation: dropBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        @keyframes dropBounce {
+            0% {
+                transform: scale(1);
+            }
+            30% {
+                transform: scale(1.02);
+            }
+            60% {
+                transform: scale(0.98);
+            }
+            80% {
+                transform: scale(1.01);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        .drag-indicator {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
+            padding: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .preview-module:hover .drag-indicator {
+            opacity: 1;
+        }
+        
+        .drag-indicator svg {
+            width: 16px;
+            height: 16px;
+            color: #666;
+        }
+        
+        .preview-module.highlight {
+            outline: 3px solid #6666FF !important;
+            outline-offset: 4px;
+            background: rgba(102, 102, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .preview-module.editing {
+            outline: 3px solid #00C853 !important;
+            outline-offset: 4px;
+            background: rgba(0, 200, 83, 0.05);
+        }
+        
+        /* 预览区操作按钮 */
+        .preview-actions {
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%);
+            background: rgba(0, 0, 0, 0.75);
+            border-radius: 8px;
+            padding: 6px 10px;
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 20;
+            pointer-events: auto;
+        }
+        
+        .preview-module:hover .preview-actions {
+            opacity: 1;
+        }
+        
+        .preview-action-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+        
+        .preview-action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .preview-action-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .preview-action-btn.delete:hover {
+            background: rgba(255, 68, 68, 0.5);
+        }
+        
+        .user-message {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 24px;
+        }
+        
+        .user-bubble {
+            background: #F1EDFF;
+            border-radius: 20px;
+            padding: 12px 16px;
+            max-width: 85%;
+            font-size: 17px;
+            line-height: 1.5;
+            color: #0F131A;
+        }
+        
+        .ai-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        
+        .ai-heading-1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            margin-top: 10px;
+        }
+        
+        .ai-text-body {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 24px;
+        }
+        
+        .hotel-name-section {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+        
+        .recommend-reason {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        
+        .recommend-reason strong {
+            font-weight: 600;
+        }
+        
+        .hotel-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .hotel-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .hotel-image {
+            width: 80px;
+            height: 110px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .hotel-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .hotel-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .hotel-info-top {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        
+        .hotel-card-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            line-height: 1.4;
+        }
+        
+        .hotel-tag {
+            font-size: 11px;
+            color: #888;
+            background: #F5F5F5;
+            border-radius: 4px;
+            padding: 2px 6px;
+        }
+        
+        .hotel-rating-row {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        
+        .rating-blue {
+            color: #6666FF;
+            font-weight: 500;
+            margin-right: 6px;
+        }
+        
+        .rating-rank {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .hotel-benefit, .hotel-location {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        
+        .hotel-info-bottom {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .hotel-price-area {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        
+        .hotel-price {
+            display: flex;
+            align-items: baseline;
+            color: #1a1a1a;
+        }
+        
+        .price-symbol {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .price-value {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+            margin: 0 2px;
+        }
+        
+        .price-suffix {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .price-discount {
+            font-size: 11px;
+            color: #FF4D00;
+            margin-top: 2px;
+        }
+        
+        .book-btn {
+            background: #EBEBFF;
+            color: #6666FF;
+            border: none;
+            border-radius: 13px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        /* ================= 机票模块样式（完全按照原始文件） ================= */
+        .flight-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 20px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .flight-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .flight-route {
+            margin-bottom: 16px;
+        }
+        
+        .flight-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        
+        .flight-icon {
+            width: 20px;
+            height: 20px;
+            background-color: #5C9CFF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .flight-icon svg {
+            width: 12px;
+            height: 12px;
+            fill: #FFF;
+        }
+        
+        .flight-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .flight-time-col {
+            display: flex;
+            flex-direction: column;
+            width: 80px;
+        }
+        
+        .flight-time-col.right {
+            align-items: flex-end;
+            text-align: right;
+        }
+        
+        .flight-time {
+            font-size: 22px;
+            font-weight: bold;
+            color: #111;
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+        
+        .flight-station {
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+        }
+        
+        .flight-duration-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 16px;
+            margin-top: 6px;
+        }
+        
+        .flight-duration-text {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+        
+        .flight-duration-line {
+            width: 100%;
+            height: 1px;
+            background-color: #E5E5E5;
+            position: relative;
+        }
+        
+        .flight-duration-line::before,
+        .flight-duration-line::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            width: 1px;
+            height: 4px;
+            background-color: #E5E5E5;
+        }
+        
+        .flight-duration-line::before {
+            left: 0;
+        }
+        
+        .flight-duration-line::after {
+            right: 0;
+        }
+        
+        .flight-airline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #888;
+        }
+        
+        .flight-airline svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .flight-divider {
+            height: 1px;
+            background-color: #F0F0F0;
+            margin: 20px 0;
+        }
+        
+        .flight-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 4px;
+        }
+        
+        .flight-tags {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .flight-tag-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .flight-tag-item:not(:last-child)::after {
+            content: '';
+            display: inline-block;
+            width: 1px;
+            height: 10px;
+            background-color: #DDD;
+            margin-left: 8px;
+        }
+        
+        .flight-price-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-end;
+            gap: 12px;
+        }
+        
+        .flight-price-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        
+        .flight-price-main {
+            display: flex;
+            align-items: baseline;
+        }
+        
+        .flight-old-price {
+            font-size: 14px;
+            color: #999;
+            text-decoration: line-through;
+            margin-right: 6px;
+        }
+        
+        .flight-current-price-symbol {
+            font-size: 14px;
+            font-weight: bold;
+            color: #111;
+        }
+        
+        .flight-current-price {
+            font-size: 26px;
+            font-weight: bold;
+            color: #111;
+            line-height: 1;
+        }
+        
+        .flight-discount-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            color: #FF4D00;
+            font-size: 12px;
+        }
+        
+        .flight-discount-border {
+            border-left: 1px dashed #FF4D00;
+            height: 10px;
+            opacity: 0.5;
+        }
+        
+        .flight-more-btn {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .flight-more-btn:hover {
+            background: #F8F9FA;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        /* ================= 火车票模块样式 ================= */
+        .train-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 20px 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .train-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .train-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        
+        .train-icon {
+            width: 20px;
+            height: 20px;
+            background-color: #66C271;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .train-icon svg {
+            width: 12px;
+            height: 12px;
+            fill: #FFF;
+        }
+        
+        .train-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .train-route-info {
+            display: flex;
+            flex: 1;
+            margin-right: 30px;
+        }
+        
+        .train-time-col {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .train-time-col.align-center {
+            align-items: center;
+        }
+        
+        .train-time {
+            font-size: 22px;
+            font-weight: 700;
+            color: #111;
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+        
+        .train-station {
+            font-size: 14px;
+            color: #111;
+            white-space: nowrap;
+            margin-bottom: 8px;
+        }
+        
+        .train-no {
+            font-size: 13px;
+            color: #999;
+        }
+        
+        .train-duration-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 10px;
+            margin-top: 6px;
+        }
+        
+        .train-duration-text {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+        
+        .train-duration-line {
+            width: 100%;
+            height: 1px;
+            background-color: #E5E5E5;
+            position: relative;
+        }
+        
+        .train-duration-line::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -3px;
+            width: 6px;
+            height: 6px;
+            border-top: 1.5px solid #E5E5E5;
+            border-right: 1.5px solid #E5E5E5;
+            transform: rotate(45deg);
+        }
+        
+        .train-action-col {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            margin-left: 12px;
+        }
+        
+        .train-price {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+        
+        .train-price-symbol {
+            font-size: 14px;
+            font-weight: bold;
+            color: #111;
+            margin-right: 2px;
+        }
+        
+        .train-price-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111;
+            line-height: 1;
+        }
+        
+        /* ================= 门票模块样式 ================= */
+        .ticket-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        /* ================= 地图模块样式 ================= */
+        .map-card {
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .map-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .map-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .map-title {
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            background: #fafafa;
+            border-top: 1px solid #f0f0f0;
+        }
+        
+        .ticket-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        
+        .ticket-image {
+            width: 80px;
+            height: 110px;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .ticket-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .ticket-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        
+        .ticket-info-top {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .ticket-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            line-height: 1.3;
+        }
+        
+        .ticket-sub-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+        
+        .ticket-desc {
+            color: #666;
+        }
+        
+        .ticket-rank {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .ticket-info-bottom {
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-end;
+            gap: 12px;
+        }
+        
+        .ticket-price-area {
+            display: flex;
+            align-items: baseline;
+            color: #111;
+        }
+        
+        .ticket-price-area .price-prefix {
+            font-size: 13px;
+            color: #333;
+            margin-right: 4px;
+        }
+        
+        .ticket-price-area .price-value {
+            font-size: 24px;
+        }
+        
+        .ai-footer-wrapper {
+            margin-bottom: 24px;
+        }
+        
+        .ai-disclaimer {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+        
+        .ai-footer-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .action-group {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid #EAEAEA;
+            background: #FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            cursor: pointer;
+        }
+        
+        .action-btn:hover {
+            background: #F5F5F5;
+            border-color: #D0D0D0;
+        }
+        
+        .action-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .follow-up-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+        
+        .suggestion-pills {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .suggestion-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: #FFF;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #0F131A;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            align-self: flex-start;
+            cursor: pointer;
+            border: 1px solid #e2e3e4;
+            transition: all 0.2s;
+        }
+        
+        .suggestion-pill:hover {
+            background: #F8F5FF;
+            border-color: #E3D8FF;
+            color: #6A4C9C;
+            transform: translateX(4px);
+        }
+        
+        .suggestion-pill svg {
+            width: 16px;
+            height: 16px;
+            color: #CCC;
+        }
+        
+        .bottom-fixed-area {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            padding-bottom: 24px;
+        }
+        
+        .input-bar-container {
+            padding: 0 16px;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            background: #FFFFFF;
+            border: 1.5px solid #6C5CE7;
+            border-radius: 22px;
+            height: 58px;
+            padding: 0 16px 0 20px;
+            gap: 12px;
+        }
+        
+        .voice-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #111;
+            cursor: pointer;
+        }
+        
+        .input-text {
+            flex: 1;
+            font-size: 16px;
+            color: #8A8A8E;
+        }
+        
+        /* ===== 保存对话框 ===== */
+        .save-dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+        }
+        .save-dialog-overlay.active {
+            display: flex;
+        }
+        .save-dialog {
+            background: #fff;
+            border-radius: 16px;
+            width: 420px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            animation: dialogIn 0.3s ease;
+        }
+        @keyframes dialogIn {
+            from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .save-dialog-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        .save-dialog-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .save-dialog-subtitle {
+            font-size: 12px;
+            color: #666;
+        }
+        .save-dialog-body {
+            padding: 24px 28px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            color: #333;
+            font-size: 14px;
+            transition: all 0.2s;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .form-group input:focus {
+            border-color: #6666FF;
+            box-shadow: 0 0 0 3px rgba(102, 102, 255, 0.1);
+            background: #fff;
+        }
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .save-dialog-footer {
+            padding: 16px 28px 24px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: inherit;
+        }
+        .btn-cancel {
+            background: #f5f5f5;
+            color: #666;
+        }
+        .btn-cancel:hover {
+            background: #e8e8e8;
+        }
+        .btn-confirm {
+            background: #6666FF;
+            color: #fff;
+        }
+        .btn-confirm:hover {
+            background: #5555EE;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 102, 255, 0.3);
+        }
+        
+        .input-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .action-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #111;
+            cursor: pointer;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            transition: transform 0.3s;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧编辑器 -->
+    <div class="editor-panel">
+        <div class="editor-header">
+            <div class="editor-title">模块编辑器</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button class="back-btn" id="mainBackBtn" onclick="backToOriginal()" title="返回原始页面">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    返回
+                </button>
+                <button class="save-btn" id="embeddedSaveBtn" onclick="saveToParent()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    保存到画板
+                </button>
+                <div class="mode-switch">
+                    <button class="mode-btn active" onclick="switchMode('edit')">编辑模式</button>
+                    <button class="mode-btn" onclick="switchMode('preview')">仅预览</button>
+                </div>
+                <button class="download-btn" onclick="downloadPage()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    下载页面
+                </button>
+            </div>
+        </div>
+        <div class="editor-content" id="editorContent">
+            <!-- 动态生成的编辑模块将在这里 -->
+        </div>
+        <div class="add-module-bar" id="addModuleBar">
+            <h3>添加模块</h3>
+            <div class="module-type-list">
+                <button class="module-type-btn" onclick="addModule('userMessage')">用户消息</button>
+                <button class="module-type-btn" onclick="addModule('aiText')">AI 文本</button>
+                <button class="module-type-btn" onclick="addModule('aiHeading')">AI 标题</button>
+                <button class="module-type-btn" onclick="addModule('hotelCard')">酒店卡片</button>
+                <button class="module-type-btn" onclick="addModule('flightCard')">机票卡片</button>
+                <button class="module-type-btn" onclick="addModule('trainCard')">火车票卡片</button>
+                <button class="module-type-btn" onclick="addModule('ticketCard')">门票卡片</button>
+                <button class="module-type-btn" onclick="addModule('mapCard')">地图卡片</button>
+                <button class="module-type-btn" onclick="addModule('followUp')">追问文本</button>
+                <button class="module-type-btn" onclick="addModule('suggestionPills')">建议选项</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右侧预览 -->
+    <div class="preview-panel">
+        <div class="phone-container" id="phonePreview">
+            <!-- 预览内容将在这里动态生成 -->
+        </div>
+        <div class="preview-back-bar" id="previewBackBar">
+            <button class="preview-back-btn" onclick="backToEdit()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                返回编辑模式
+            </button>
+        </div>
+    </div>
+    
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- 保存对话框 -->
+    <div class="save-dialog-overlay" id="saveDialogOverlay">
+        <div class="save-dialog">
+            <div class="save-dialog-header">
+                <div class="save-dialog-title">保存到画板</div>
+                <div class="save-dialog-subtitle">配置页面名称和尺寸</div>
+            </div>
+            <div class="save-dialog-body">
+                <div class="form-group">
+                    <label>页面名称</label>
+                    <input type="text" id="savePageName" placeholder="例如：首页设计" autofocus>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>宽度 (px)</label>
+                        <input type="number" id="savePageWidth" value="375" min="320" max="800">
+                    </div>
+                    <div class="form-group">
+                        <label>高度 (px)</label>
+                        <input type="number" id="savePageHeight" value="812" min="480" max="2000">
+                    </div>
+                </div>
+            </div>
+            <div class="save-dialog-footer">
+                <button class="btn btn-cancel" onclick="closeSaveDialog()">取消</button>
+                <button class="btn btn-confirm" onclick="confirmSaveToParent()">确定</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 检测是否为内嵌模式
+        const urlParams = new URLSearchParams(window.location.search);
+        const isEmbeddedMode = urlParams.get('mode') === 'embedded';
+        const parentCallback = urlParams.get('callback');
+        const storageKey = urlParams.get('storageKey'); // 新增：从 localStorage 读取的 key
+        
+        // 内嵌模式初始化
+        if (isEmbeddedMode) {
+            document.body.classList.add('embedded-mode');
+            document.getElementById('mainBackBtn').style.display = 'none';
+            document.getElementById('embeddedSaveBtn').classList.add('show');
+        }
+        
+        // 加载已有编辑数据
+        let initialModules = null;
+        let loadedPageName = null;
+        
+        if (storageKey) {
+            console.log('📦 从 localStorage 加载数据，key:', storageKey);
+            try {
+                const storedData = localStorage.getItem(storageKey);
+                if (storedData) {
+                    const editData = JSON.parse(storedData);
+                    console.log('✅ 成功从 localStorage 解析数据:', editData);
+                    
+                    if (editData && editData.modules) {
+                        initialModules = editData.modules;
+                        loadedPageName = editData.pageName;
+                        console.log('✅ 成功加载页面数据进行编辑:', loadedPageName, '模块数量:', initialModules.length);
+                        
+                        // 清理临时数据（5 秒后）
+                        setTimeout(() => {
+                            localStorage.removeItem(storageKey);
+                            console.log('🗑️ 已清理临时数据:', storageKey);
+                        }, 5000);
+                    } else {
+                        console.error('❌ 数据格式不正确，缺少 modules 字段');
+                    }
+                } else {
+                    console.error('❌ localStorage 中没有找到该 key 的数据');
+                }
+            } catch (e) {
+                console.error('❌ 从 localStorage 读取数据失败:', e);
+            }
+        } else {
+            console.log('ℹ️ 没有 storageKey，使用默认数据（新建模式）');
+        }
+        
+        // 初始数据 - 如果有加载的数据则使用，否则使用默认数据
+        let appData = {
+            modules: initialModules || [
+                {
+                    id: 'user-message-1',
+                    type: 'userMessage',
+                    name: '用户消息',
+                    data: {
+                        text: '春节期间，打算去北京游玩故宫、环球影城等景点。基于这些要求，给我推荐一些酒店'
+                    }
+                },
+                {
+                    id: 'ai-intro-1',
+                    type: 'aiText',
+                    name: 'AI 回复文本',
+                    data: {
+                        text: '有注意到您是雅高金体验会员，我们会基于此为您推荐酒店 鉴于春节期间北京热门的住宿'
+                    }
+                },
+                {
+                    id: 'ai-heading-1',
+                    type: 'aiHeading',
+                    name: 'AI 标题',
+                    data: {
+                        text: '方案一：住天安门广场区域'
+                    }
+                },
+                {
+                    id: 'ai-text-1',
+                    type: 'aiText',
+                    name: 'AI 描述文本',
+                    data: {
+                        text: '酒店地理位置优越，交通便捷，方便前往天安门广场等著名景点。酒店服务热心周到，住宿环境舒适，让您尽享愉快的旅途'
+                    }
+                },
+                {
+                    id: 'hotel-name-1',
+                    type: 'hotelName',
+                    name: '酒店名称',
+                    data: {
+                        text: '北京华彬费尔蒙酒店'
+                    }
+                },
+                {
+                    id: 'hotel-reason-1',
+                    type: 'hotelReason',
+                    name: '推荐理由',
+                    data: {
+                        text: '北京华彬费尔蒙酒店属于豪华型酒店，酒店服务周到，设施齐全，可以满足您的住宿需求'
+                    }
+                },
+                {
+                    id: 'hotel-card-1',
+                    type: 'hotelCard',
+                    name: '酒店卡片',
+                    data: {
+                        imageUrl: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 140\'%3E%3Cdefs%3E%3ClinearGradient id=\'sky\' x1=\'0%25\' y1=\'0%25\' x2=\'0%25\' y2=\'100%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%239CD0FF\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%23EAF4FF\'/%3E%3C/linearGradient%3E%3ClinearGradient id=\'build\' x1=\'0%25\' y1=\'0%25\' x2=\'100%25\' y2=\'0%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%23E67A5A\'/%3E%3Cstop offset=\'50%25\' stop-color=\'%23C14E34\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%238F2B15\'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=\'100\' height=\'140\' fill=\'url(%23sky)\'/%3E%3Cpath d=\'M10,40 L90,20 L90,140 L10,140 Z\' fill=\'url(%23build)\'/%3E%3Cpath d=\'M15,45 L18,44 L18,140 L15,140 Z M30,41 L33,40 L33,140 L30,140 Z M45,38 L48,37 L48,140 L45,140 Z M60,34 L63,33 L63,140 L60,140 Z M75,31 L78,30 L78,140 L75,140 Z\' fill=\'%23FFA685\' opacity=\'0.7\'/%3E%3Crect x=\'0\' y=\'125\' width=\'100\' height=\'15\' fill=\'%232D3B31\'/%3E%3Cpath d=\'M0,135 Q25,120 50,135 T100,125 L100,140 L0,140 Z\' fill=\'%233A5241\'/%3E%3C/svg%3E',
+                        name: '北京港澳中心瑞士酒店',
+                        tag: '豪华型',
+                        rating: '4.7 | 超棒',
+                        rank: '东城区酒店品质榜·第 1 名',
+                        benefit: '万豪白金卡会员权益',
+                        location: '近天安门广场',
+                        price: '688',
+                        discount: '优惠¥5',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                {
+                    id: 'ai-flight-intro',
+                    type: 'aiHeading',
+                    name: 'AI 航班标题',
+                    data: {
+                        text: '为您推荐相关航班'
+                    }
+                },
+                {
+                    id: 'flight-card-1',
+                    type: 'flightCard',
+                    name: '机票卡片',
+                    data: {
+                        departureLabel: '去程机票 | 4 月 30 日 周三 杭州 - 乌鲁木齐',
+                        departureTime: '15:05',
+                        departureStation: '萧山 T3',
+                        duration: '总 4h10m',
+                        arrivalTime: '19:15',
+                        arrivalStation: '乌鲁木齐',
+                        airline: '中国国航 CA857',
+                        returnLabel: '返程机票 | 5 月 5 日 周一 乌鲁木齐 - 杭州',
+                        returnTime: '17:00',
+                        returnStation: '乌鲁木齐...',
+                        returnDuration: '总 4h',
+                        returnArrivalTime: '21:00',
+                        returnArrivalStation: '萧山 T3',
+                        returnAirline: '中国国航 CA857',
+                        tags: ['经济舱', '每程托运行李 25 公斤', '退改¥80 起'],
+                        oldPrice: '3260',
+                        currentPrice: '3180',
+                        discount: '优惠¥80',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                {
+                    id: 'flight-more-btn',
+                    type: 'flightMoreBtn',
+                    name: '查看更多航班',
+                    data: {
+                        text: '查看更多航班组合'
+                    }
+                },
+                {
+                    id: 'ai-train-intro',
+                    type: 'aiHeading',
+                    name: 'AI 高铁标题',
+                    data: {
+                        text: '或者您也可以选择高铁出行'
+                    }
+                },
+                {
+                    id: 'train-card-1',
+                    type: 'trainCard',
+                    name: '火车票卡片',
+                    data: {
+                        header: '火车 | 2 月 26 日 上海 - 北京',
+                        departureTime: '15:04',
+                        departureStation: '上海虹桥',
+                        trainNo: '高铁 G44',
+                        duration: '总 4h33m',
+                        arrivalTime: '19:37',
+                        arrivalStation: '北京南',
+                        price: '559',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                {
+                    id: 'ai-ticket-intro',
+                    type: 'aiHeading',
+                    name: 'AI 门票标题',
+                    data: {
+                        text: '为您推荐周边景点门票'
+                    }
+                },
+                {
+                    id: 'map-card-1',
+                    type: 'mapCard',
+                    name: '地图',
+                    data: {
+                        imageUrl: 'https://img.alicdn.com/imgextra/i1/O1CN01wfgo7r26m21a4zlfL_!!6000000007703-2-tps-1380-1864.png',
+                        title: '北京景点分布图'
+                    }
+                },
+                {
+                    id: 'ticket-card-1',
+                    type: 'ticketCard',
+                    name: '门票卡片',
+                    data: {
+                        imageUrl: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 140\'%3E%3Cdefs%3E%3ClinearGradient id=\'water\' x1=\'0%25\' y1=\'0%25\' x2=\'100%25\' y2=\'100%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%236B8E83\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%234A6B60\'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=\'100\' height=\'140\' fill=\'url(%23water)\'/%3E%3Cpath d=\'M0,0 Q30,20 20,50 T0,80 Z\' fill=\'%237DAE32\' opacity=\'0.9\'/%3E%3Cpath d=\'M0,0 Q30,20 20,50 T0,80 Z\' fill=\'%238CC63F\' opacity=\'0.7\' transform=\'scale(0.9)\'/%3E%3Cpath d=\'M100,0 Q60,30 80,70 T100,120 Z\' fill=\'%238CC63F\' opacity=\'0.85\'/%3E%3Cpath d=\'M0,140 Q40,110 30,80 T0,70 Z\' fill=\'%236D9E24\' opacity=\'0.9\'/%3E%3Cpath d=\'M100,140 Q50,130 60,90 T100,60 Z\' fill=\'%239FD04B\' opacity=\'0.8\'/%3E%3Crect x=\'45\' y=\'65\' width=\'4\' height=\'12\' fill=\'%23FFF\' transform=\'rotate(-30 47 71)\' rx=\'1\'/%3E%3Crect x=\'46\' y=\'67\' width=\'2\' height=\'6\' fill=\'%23D25A3D\' transform=\'rotate(-30 47 71)\'/%3E%3C/svg%3E',
+                        title: '西溪国家湿地公园',
+                        rating: '4.7 | 超棒',
+                        desc: '余杭区·5A 景区',
+                        rank: '杭州山湖田园景点榜·第 1 名',
+                        price: '80',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                {
+                    id: 'follow-up-1',
+                    type: 'followUp',
+                    name: '追问文本',
+                    data: {
+                        text: '根据您的需求，我为您推荐了三个区域的酒店方案。您更倾向于住在哪个区域呢？或者您对酒店有什么特别的要求吗？比如看重交通便利性、亲子设施还是商务服务？'
+                    }
+                },
+                {
+                    id: 'suggestion-pills-1',
+                    type: 'suggestionPills',
+                    name: '建议选项',
+                    data: {
+                        pills: [
+                            '推荐天安门附近高端酒店',
+                            '环球度假区性价比酒店',
+                            '大兴机场接送机服务酒店'
+                        ]
+                    }
+                }
+            ]
+        };
+        
+        let clipboard = null;
+        let currentMode = 'edit';
+        let draggedIndex = null;
+        let previewDraggedIndex = null;
+        
+        // 初始化
+        function init() {
+            renderEditor();
+            renderPreview();
+            // 默认显示添加模块栏
+            const addModuleBar = document.getElementById('addModuleBar');
+            if (addModuleBar) {
+                addModuleBar.style.display = 'block';
+            }
+            
+            // 添加对话框事件监听
+            setupSaveDialogEvents();
+        }
+        
+        // 设置保存对话框事件
+        function setupSaveDialogEvents() {
+            // ESC 键关闭对话框
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const overlay = document.getElementById('saveDialogOverlay');
+                    if (overlay.classList.contains('active')) {
+                        closeSaveDialog();
+                    }
+                }
+            });
+            
+            // 点击遮罩关闭
+            const overlay = document.getElementById('saveDialogOverlay');
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    closeSaveDialog();
+                }
+            });
+            
+            // 回车键确认保存
+            document.getElementById('savePageName').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    confirmSaveToParent();
+                }
+            });
+        }
+        
+        // 渲染编辑器
+        function renderEditor() {
+            const container = document.getElementById('editorContent');
+            container.innerHTML = '';
+            
+            appData.modules.forEach((module, index) => {
+                const moduleEl = document.createElement('div');
+                moduleEl.className = 'module-item';
+                moduleEl.draggable = true;
+                moduleEl.dataset.index = index;
+                
+                moduleEl.innerHTML = `
+                    <div class="module-header">
+                        <div style="display: flex; align-items: center;">
+                            <div class="drag-handle">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="9" cy="19" r="2"/>
+                                    <circle cx="15" cy="5" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="15" cy="19" r="2"/>
+                                </svg>
+                            </div>
+                            <span class="module-name">${module.name}</span>
+                        </div>
+                        <div class="module-actions">
+                            <button class="action-btn-small" onclick="copyModule(${index})">复制</button>
+                            <button class="action-btn-small" onclick="pasteModule(${index})">粘贴</button>
+                            <button class="action-btn-small" onclick="deleteModule(${index})" style="color: #ff4444;">删除</button>
+                        </div>
+                    </div>
+                    <div class="module-body">
+                        ${renderModuleFields(module, index)}
+                    </div>
+                `;
+                
+                // 添加拖拽事件监听
+                addDragEvents(moduleEl, index);
+                
+                container.appendChild(moduleEl);
+            });
+        }
+        
+        // 添加拖拽事件
+        function addDragEvents(element, index) {
+            element.addEventListener('dragstart', handleDragStart);
+            element.addEventListener('dragover', handleDragOver);
+            element.addEventListener('dragleave', handleDragLeave);
+            element.addEventListener('drop', handleDrop);
+            element.addEventListener('dragend', handleDragEnd);
+        }
+        
+        function handleDragStart(e) {
+            draggedIndex = this.dataset.index;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', draggedIndex);
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (this.dataset.index !== draggedIndex) {
+                this.classList.add('drag-over');
+            }
+        }
+        
+        function handleDragLeave() {
+            this.classList.remove('drag-over');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            const fromIndex = parseInt(draggedIndex);
+            const toIndex = parseInt(this.dataset.index);
+            
+            if (fromIndex !== toIndex && !isNaN(fromIndex) && !isNaN(toIndex)) {
+                // 移动数组元素
+                const [movedItem] = appData.modules.splice(fromIndex, 1);
+                appData.modules.splice(toIndex, 0, movedItem);
+                
+                renderEditor();
+                renderPreview();
+                showToast(`已移动模块到位置 ${toIndex + 1}`);
+            }
+        }
+        
+        function handleDragEnd() {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.module-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+            draggedIndex = null;
+        }
+        
+        // 预览区拖拽处理函数
+        function handlePreviewDragStart(e) {
+            previewDraggedIndex = parseInt(this.dataset.index);
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', previewDraggedIndex);
+            
+            // 设置拖拽 ghost 图像样式
+            if (e.dataTransfer.setDragImage) {
+                const dragImage = this.cloneNode(true);
+                dragImage.style.position = 'absolute';
+                dragImage.style.top = '-9999px';
+                dragImage.style.opacity = '0.5';
+                dragImage.style.transform = 'scale(1.05)';
+                document.body.appendChild(dragImage);
+                e.dataTransfer.setDragImage(dragImage, this.offsetWidth / 2, this.offsetHeight / 2);
+                setTimeout(() => document.body.removeChild(dragImage), 0);
+            }
+        }
+        
+        function handlePreviewDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const currentIndex = parseInt(this.dataset.index);
+            if (currentIndex !== previewDraggedIndex) {
+                const rect = this.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                const hoverProgress = e.clientY < midpoint ? 
+                    (midpoint - e.clientY) / (midpoint - rect.top) :
+                    (e.clientY - midpoint) / (rect.bottom - midpoint);
+                
+                // 根据鼠标位置动态调整指示线透明度
+                const opacity = 0.3 + (hoverProgress * 0.7);
+                
+                // 判断是拖到上方还是下方
+                if (e.clientY < midpoint) {
+                    this.classList.remove('drag-over-bottom');
+                    this.classList.add('drag-over-top');
+                    this.style.borderTopColor = `rgba(102, 102, 255, ${opacity})`;
+                } else {
+                    this.classList.remove('drag-over-top');
+                    this.classList.add('drag-over-bottom');
+                    this.style.borderBottomColor = `rgba(102, 102, 255, ${opacity})`;
+                }
+            }
+        }
+        
+        function handlePreviewDragLeave() {
+            this.classList.remove('drag-over-top');
+            this.classList.remove('drag-over-bottom');
+            this.style.borderTopColor = '';
+            this.style.borderBottomColor = '';
+        }
+        
+        function handlePreviewDrop(e) {
+            e.preventDefault();
+            
+            const toIndex = parseInt(this.dataset.index);
+            const fromIndex = previewDraggedIndex;
+            
+            if (fromIndex !== toIndex && !isNaN(fromIndex) && !isNaN(toIndex)) {
+                const rect = this.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                const insertAbove = e.clientY < midpoint;
+                
+                // 计算实际插入位置
+                let actualInsertIndex = toIndex;
+                if (!insertAbove && toIndex > fromIndex) {
+                    actualInsertIndex = toIndex + 1;
+                } else if (insertAbove && toIndex < fromIndex) {
+                    actualInsertIndex = toIndex;
+                } else if (insertAbove && toIndex > fromIndex) {
+                    actualInsertIndex = toIndex;
+                } else if (!insertAbove && toIndex < fromIndex) {
+                    actualInsertIndex = toIndex + 1;
+                }
+                
+                // 移动数组元素
+                const [movedItem] = appData.modules.splice(fromIndex, 1);
+                appData.modules.splice(actualInsertIndex, 0, movedItem);
+                
+                renderEditor();
+                renderPreview();
+                
+                // 添加掉落动画
+                setTimeout(() => {
+                    const droppedModule = document.querySelectorAll('.preview-module')[actualInsertIndex];
+                    if (droppedModule) {
+                        droppedModule.classList.add('drop-anim');
+                        setTimeout(() => droppedModule.classList.remove('drop-anim'), 400);
+                    }
+                }, 50);
+                
+                showToast(`已调整模块顺序`);
+            }
+            
+            this.classList.remove('drag-over-top');
+            this.classList.remove('drag-over-bottom');
+            this.style.borderTopColor = '';
+            this.style.borderBottomColor = '';
+        }
+        
+        function handlePreviewDragEnd() {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.preview-module').forEach(item => {
+                item.classList.remove('drag-over-top');
+                item.classList.remove('drag-over-bottom');
+                item.style.borderTopColor = '';
+                item.style.borderBottomColor = '';
+            });
+            previewDraggedIndex = null;
+        }
+        
+        // 预览区操作按钮功能
+        function previewCopy(event, index) {
+            event.stopPropagation();
+            clipboard = JSON.parse(JSON.stringify(appData.modules[index]));
+            showToast('已复制模块');
+        }
+        
+        function previewPaste(event, index) {
+            event.stopPropagation();
+            
+            if (!clipboard) {
+                showToast('请先复制一个模块');
+                return;
+            }
+            
+            const newModule = JSON.parse(JSON.stringify(clipboard));
+            newModule.id = `${newModule.type}-${Date.now()}`;
+            appData.modules.splice(index + 1, 0, newModule);
+            renderEditor();
+            renderPreview();
+            showToast('已粘贴模块');
+        }
+        
+        function previewDelete(event, index) {
+            event.stopPropagation();
+            
+            if (confirm('确定要删除这个模块吗？')) {
+                appData.modules.splice(index, 1);
+                renderEditor();
+                renderPreview();
+                showToast('已删除模块');
+            }
+        }
+        
+        // 渲染模块字段
+        function renderModuleFields(module, index) {
+            let html = '';
+            const hiddenFields = module.data._hiddenFields || [];
+            
+            for (const [key, value] of Object.entries(module.data)) {
+                // 跳过内部字段
+                if (key.startsWith('_')) continue;
+                
+                const label = formatLabel(key);
+                const isHidden = hiddenFields.includes(key);
+                
+                if (key === 'imageUrl') {
+                    html += `
+                        <div class="field-row ${isHidden ? 'field-hidden' : ''}">
+                            <button class="visibility-toggle ${isHidden ? 'hidden' : ''}" 
+                                onclick="toggleFieldVisibility(${index}, '${key}')" title="${isHidden ? '显示' : '隐藏'}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    ${isHidden ? 
+                                        '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' :
+                                        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                                    }
+                                </svg>
+                            </button>
+                            <div class="editable-field">
+                                <div class="field-label">${label}</div>
+                                <input type="text" class="field-input" value="${escapeHtml(value)}" 
+                                    onchange="updateField(${index}, '${key}', this.value)" placeholder="输入图片 URL">
+                                ${!isHidden ? `<img src="${value}" style="max-width: 100px; max-height: 100px; margin-top: 8px; border-radius: 4px;" onerror="this.style.display='none'">` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else if (Array.isArray(value)) {
+                    html += `
+                        <div class="field-row ${isHidden ? 'field-hidden' : ''}">
+                            <button class="visibility-toggle ${isHidden ? 'hidden' : ''}" 
+                                onclick="toggleFieldVisibility(${index}, '${key}')" title="${isHidden ? '显示' : '隐藏'}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    ${isHidden ? 
+                                        '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' :
+                                        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                                    }
+                                </svg>
+                            </button>
+                            <div class="editable-field">
+                                <div class="field-label">${label}（用逗号分隔）</div>
+                                <textarea class="field-input" onchange="updateArrayField(${index}, '${key}', this.value)">${value.join(', ')}</textarea>
+                            </div>
+                        </div>
+                    `;
+                } else if (typeof value === 'string' && value.length > 50) {
+                    html += `
+                        <div class="field-row ${isHidden ? 'field-hidden' : ''}">
+                            <button class="visibility-toggle ${isHidden ? 'hidden' : ''}" 
+                                onclick="toggleFieldVisibility(${index}, '${key}')" title="${isHidden ? '显示' : '隐藏'}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    ${isHidden ? 
+                                        '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' :
+                                        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                                    }
+                                </svg>
+                            </button>
+                            <div class="editable-field">
+                                <div class="field-label">${label}</div>
+                                <textarea class="field-input" onchange="updateField(${index}, '${key}', this.value)">${value}</textarea>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="field-row ${isHidden ? 'field-hidden' : ''}">
+                            <button class="visibility-toggle ${isHidden ? 'hidden' : ''}" 
+                                onclick="toggleFieldVisibility(${index}, '${key}')" title="${isHidden ? '显示' : '隐藏'}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    ${isHidden ? 
+                                        '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' :
+                                        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                                    }
+                                </svg>
+                            </button>
+                            <div class="editable-field">
+                                <div class="field-label">${label}</div>
+                                <input type="text" class="field-input" value="${escapeHtml(value)}" 
+                                    onchange="updateField(${index}, '${key}', this.value)">
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            return html;
+        }
+        
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 格式化标签
+        function formatLabel(key) {
+            const labels = {
+                'text': '文本内容',
+                'imageUrl': '图片链接',
+                'name': '名称',
+                'tag': '标签',
+                'rating': '评分',
+                'rank': '排名',
+                'benefit': '权益',
+                'location': '位置',
+                'price': '价格',
+                'discount': '优惠',
+                'bookBtnText': '预订按钮文案',
+                'title': '标题',
+                'departureLabel': '去程标签',
+                'departureTime': '出发时间',
+                'departureStation': '出发站',
+                'duration': '时长',
+                'arrivalTime': '到达时间',
+                'arrivalStation': '到达站',
+                'airline': '航空公司',
+                'returnLabel': '返程标签',
+                'returnTime': '返程时间',
+                'returnStation': '返程出发站',
+                'returnDuration': '返程时长',
+                'returnArrivalTime': '返程到达时间',
+                'returnArrivalStation': '返程到达站',
+                'returnAirline': '返程航空',
+                'tags': '标签列表',
+                'oldPrice': '原价',
+                'currentPrice': '现价',
+                'header': '标题',
+                'trainNo': '车次',
+                'desc': '描述',
+                'pills': '选项列表（用逗号分隔）'
+            };
+            return labels[key] || key;
+        }
+        
+        // 渲染预览
+        function renderPreview() {
+            const container = document.getElementById('phonePreview');
+            container.innerHTML = `
+                <div class="bottom-bg-image">
+                    <img src="https://img.alicdn.com/imgextra/i1/O1CN01VqGz7U1TQGBGN9JpS_!!6000000002376-2-tps-1500-1120.png" alt="底部背景图">
+                </div>
+                
+                <div class="header-wrapper">
+                    <div class="status-bar">
+                        <div>9:41</div>
+                        <div class="status-icons">
+                            <svg width="18" height="12" viewBox="0 0 18 12" fill="#1a1a1a">
+                                <rect x="0" y="8" width="3" height="4" rx="1"/>
+                                <rect x="5" y="5" width="3" height="7" rx="1"/>
+                                <rect x="10" y="2" width="3" height="10" rx="1"/>
+                                <rect x="15" y="0" width="3" height="12" rx="1"/>
+                            </svg>
+                            <svg width="16" height="12" viewBox="0 0 16 12" fill="#1a1a1a">
+                                <path d="M8 12C8.6 12 9 11.6 9 11C9 10.4 8.6 10 8 10C7.4 10 7 10.4 7 11C7 11.6 7.4 12 8 12Z"/>
+                                <path d="M8 6.5C6.1 6.5 4.4 7.2 3.1 8.3L4.5 9.7C5.5 8.9 6.7 8.5 8 8.5C9.3 8.5 10.5 8.9 11.5 9.7L12.9 8.3C11.6 7.2 9.9 6.5 8 6.5Z"/>
+                                <path d="M8 3C5.1 3 2.5 4.1 0.5 5.8L1.9 7.2C3.6 5.8 5.7 5 8 5C10.3 5 12.4 5.8 14.1 7.2L15.5 5.8C13.5 4.1 10.9 3 8 3Z"/>
+                            </svg>
+                            <svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="#1a1a1a" stroke-width="1.2">
+                                <rect x="1" y="1" width="19" height="10" rx="3"/>
+                                <path d="M23 4V8" stroke-linecap="round"/>
+                                <rect x="3" y="3" width="15" height="6" rx="1.5" fill="#1a1a1a"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="header">
+                        <div class="header-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <line x1="4" y1="8" x2="20" y2="8"></line>
+                                <line x1="4" y1="16" x2="14" y2="16"></line>
+                            </svg>
+                        </div>
+                        <div class="header-title">飞猪千问</div>
+                        <div class="header-right">
+                            <div class="header-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 10V16C20 18.2 18.2 20 16 20H8.5L4 22V8C4 5.8 5.8 4 8 4H14"></path>
+                                    <path d="M17 4V8M15 6H19"></path>
+                                </svg>
+                            </div>
+                            <div class="header-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-content" id="chatContent">
+                    ${appData.modules.map((m, i) => `
+                        <div class="preview-module" data-index="${i}" draggable="true">
+                            <div class="preview-actions">
+                                <button class="preview-action-btn" onclick="previewCopy(event, ${i})" title="复制">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    <span>复制</span>
+                                </button>
+                                <button class="preview-action-btn" onclick="previewPaste(event, ${i})" title="粘贴">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                    </svg>
+                                    <span>粘贴</span>
+                                </button>
+                                <button class="preview-action-btn delete" onclick="previewDelete(event, ${i})" title="删除">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                    <span>删除</span>
+                                </button>
+                            </div>
+                            <div class="drag-indicator">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="9" cy="19" r="2"/>
+                                    <circle cx="15" cy="5" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="15" cy="19" r="2"/>
+                                </svg>
+                            </div>
+                            ${renderModulePreview(m)}
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="bottom-fixed-area">
+                    <div class="input-bar-container">
+                        <div class="input-wrapper">
+                            <div class="voice-icon">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5.5 12h.01" stroke-width="4"></path>
+                                    <path d="M9.5 9.5a3.5 3.5 0 0 1 0 5" stroke-width="2"></path>
+                                    <path d="M13.5 6.5a7.5 7.5 0 0 1 0 11" stroke-width="2"></path>
+                                </svg>
+                            </div>
+                            <div class="input-text">发消息或者按住说话...</div>
+                            <div class="input-actions">
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="8" width="18" height="12" rx="3.5"></rect>
+                                        <path d="M7.5 8L9 5h6l1.5 3"></path>
+                                        <circle cx="12" cy="14" r="3"></circle>
+                                    </svg>
+                                </div>
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="7.5" x2="12" y2="16.5"></line>
+                                        <line x1="7.5" y1="12" x2="16.5" y2="12"></line>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 添加预览区拖拽事件监听
+            setTimeout(() => {
+                const previewModules = document.querySelectorAll('.preview-module');
+                previewModules.forEach(module => {
+                    module.addEventListener('dragstart', handlePreviewDragStart);
+                    module.addEventListener('dragover', handlePreviewDragOver);
+                    module.addEventListener('dragleave', handlePreviewDragLeave);
+                    module.addEventListener('drop', handlePreviewDrop);
+                    module.addEventListener('dragend', handlePreviewDragEnd);
+                    module.addEventListener('click', handlePreviewClick);
+                    module.addEventListener('dblclick', handlePreviewDblClick);
+                });
+            }, 0);
+        }
+        
+        // 点击预览模块，左侧定位并高亮
+        function handlePreviewClick(e) {
+            // 如果点击的是操作按钮，不触发
+            if (e.target.closest('.preview-actions') || e.target.closest('.drag-indicator')) {
+                return;
+            }
+            
+            const index = parseInt(this.dataset.index);
+            
+            // 移除所有高亮
+            document.querySelectorAll('.preview-module').forEach(m => m.classList.remove('highlight'));
+            document.querySelectorAll('.module-item').forEach(m => m.classList.remove('highlight'));
+            
+            // 高亮当前模块
+            this.classList.add('highlight');
+            
+            // 左侧编辑器滚动到对应模块
+            const editorModule = document.querySelectorAll('.module-item')[index];
+            if (editorModule) {
+                editorModule.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                editorModule.classList.add('highlight');
+                
+                // 2 秒后移除高亮
+                setTimeout(() => {
+                    editorModule.classList.remove('highlight');
+                }, 2000);
+            }
+        }
+        
+        // 双击预览模块，快捷编辑
+        function handlePreviewDblClick(e) {
+            // 如果点击的是操作按钮，不触发
+            if (e.target.closest('.preview-actions') || e.target.closest('.drag-indicator')) {
+                return;
+            }
+            
+            const index = parseInt(this.dataset.index);
+            const module = appData.modules[index];
+            
+            // 找到第一个可编辑的文本字段
+            const firstTextField = Object.keys(module.data).find(key => 
+                typeof module.data[key] === 'string' && key !== 'imageUrl'
+            );
+            
+            if (firstTextField) {
+                // 左侧编辑器滚动到对应模块
+                const editorModule = document.querySelectorAll('.module-item')[index];
+                if (editorModule) {
+                    editorModule.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // 聚焦到第一个输入框
+                    setTimeout(() => {
+                        const input = editorModule.querySelector('.field-input');
+                        if (input) {
+                            input.focus();
+                            input.select();
+                            editorModule.classList.add('editing');
+                            
+                            // 移除编辑状态
+                            input.addEventListener('blur', () => {
+                                setTimeout(() => {
+                                    editorModule.classList.remove('editing');
+                                }, 300);
+                            }, { once: true });
+                        }
+                    }, 300);
+                }
+            }
+        }
+        
+        // 渲染单个模块预览
+        function renderModulePreview(module) {
+            switch (module.type) {
+                case 'userMessage':
+                    return `
+                        <div class="user-message">
+                            <div class="user-bubble">${module.data.text}</div>
+                        </div>
+                    `;
+                    
+                case 'aiText':
+                    return `<div class="ai-text">${module.data.text}</div>`;
+                    
+                case 'aiHeading':
+                    return `<div class="ai-heading-1">${module.data.text}</div>`;
+                    
+                case 'hotelName':
+                    return `<div class="hotel-name-section">${module.data.text}</div>`;
+                    
+                case 'hotelReason':
+                    return `
+                        <div class="recommend-reason">
+                            <strong>推荐理由：</strong>${module.data.text}
+                        </div>
+                    `;
+                    
+                case 'hotelCard':
+                    const d = module.data;
+                    const hotelHidden = d._hiddenFields || [];
+                    return `
+                        <div class="hotel-card">
+                            ${!hotelHidden.includes('imageUrl') ? `
+                            <div class="hotel-image">
+                                <img src="${d.imageUrl}" alt="${d.name}">
+                            </div>
+                            ` : ''}
+                            <div class="hotel-info">
+                                <div>
+                                    ${!hotelHidden.includes('name') || !hotelHidden.includes('tag') ? `
+                                    <div class="hotel-info-top">
+                                        ${!hotelHidden.includes('name') ? `<span class="hotel-card-name">${d.name}</span>` : ''}
+                                        ${!hotelHidden.includes('tag') ? `<span class="hotel-tag">${d.tag}</span>` : ''}
+                                    </div>
+                                    ` : ''}
+                                    ${!hotelHidden.includes('rating') || !hotelHidden.includes('rank') ? `
+                                    <div class="hotel-rating-row">
+                                        ${!hotelHidden.includes('rating') ? `<span class="rating-blue">${d.rating}</span>` : ''}
+                                        ${!hotelHidden.includes('rank') ? `<span class="rating-rank">${d.rank}</span>` : ''}
+                                    </div>
+                                    ` : ''}
+                                    ${!hotelHidden.includes('benefit') ? `<div class="hotel-benefit">${d.benefit}</div>` : ''}
+                                    ${!hotelHidden.includes('location') ? `<div class="hotel-location">${d.location}</div>` : ''}
+                                </div>
+                                <div class="hotel-info-bottom">
+                                    ${!hotelHidden.includes('price') || !hotelHidden.includes('discount') ? `
+                                    <div class="hotel-price-area">
+                                        ${!hotelHidden.includes('price') ? `
+                                        <div class="hotel-price">
+                                            <span class="price-symbol">¥</span>
+                                            <span class="price-value">${d.price}</span>
+                                            <span class="price-suffix">起</span>
+                                        </div>
+                                        ` : ''}
+                                        ${!hotelHidden.includes('discount') ? `<div class="price-discount">${d.discount}</div>` : ''}
+                                    </div>
+                                    ` : ''}
+                                    ${!hotelHidden.includes('bookBtnText') ? `<button class="book-btn">${d.bookBtnText || '预订'}</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'flightCard':
+                    const f = module.data;
+                    const flightHidden = f._hiddenFields || [];
+                    return `
+                        <div class="flight-card">
+                            <div class="flight-route">
+                                ${!flightHidden.includes('departureLabel') ? `
+                                <div class="flight-header">
+                                    <div class="flight-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                                    </div>
+                                    <span>${f.departureLabel}</span>
+                                </div>
+                                ` : ''}
+                                ${!flightHidden.includes('departureTime') && !flightHidden.includes('departureStation') && !flightHidden.includes('duration') && !flightHidden.includes('arrivalTime') && !flightHidden.includes('arrivalStation') ? `
+                                <div class="flight-details">
+                                    ${!flightHidden.includes('departureTime') && !flightHidden.includes('departureStation') ? `
+                                    <div class="flight-time-col">
+                                        <div class="flight-time">${f.departureTime}</div>
+                                        <div class="flight-station">${f.departureStation}</div>
+                                    </div>
+                                    ` : ''}
+                                    ${!flightHidden.includes('duration') ? `
+                                    <div class="flight-duration-col">
+                                        <div class="flight-duration-text">${f.duration}</div>
+                                        <div class="flight-duration-line"></div>
+                                    </div>
+                                    ` : ''}
+                                    ${!flightHidden.includes('arrivalTime') && !flightHidden.includes('arrivalStation') ? `
+                                    <div class="flight-time-col right">
+                                        <div class="flight-time">${f.arrivalTime}</div>
+                                        <div class="flight-station">${f.arrivalStation}</div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                ` : ''}
+                                ${!flightHidden.includes('airline') ? `
+                                <div class="flight-airline">
+                                    <svg viewBox="0 0 24 24" fill="#E62C25">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.82 14.6l-5.32-3.8v4.4L7.5 15.6V8.4L10.5 7v4.4l5.32-3.8v8.6z"/>
+                                    </svg>
+                                    <span>${f.airline}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                            ${!flightHidden.includes('returnLabel') || !flightHidden.includes('returnTime') || !flightHidden.includes('returnAirline') ? `
+                            <div class="flight-divider"></div>
+                            <div class="flight-route">
+                                ${!flightHidden.includes('returnLabel') ? `
+                                <div class="flight-header">
+                                    <div class="flight-icon">
+                                        <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+                                    </div>
+                                    <span>${f.returnLabel}</span>
+                                </div>
+                                ` : ''}
+                                ${!flightHidden.includes('returnTime') && !flightHidden.includes('returnStation') && !flightHidden.includes('returnDuration') && !flightHidden.includes('returnArrivalTime') && !flightHidden.includes('returnArrivalStation') ? `
+                                <div class="flight-details">
+                                    <div class="flight-time-col">
+                                        <div class="flight-time">${f.returnTime}</div>
+                                        <div class="flight-station">${f.returnStation}</div>
+                                    </div>
+                                    <div class="flight-duration-col">
+                                        <div class="flight-duration-text">${f.returnDuration}</div>
+                                        <div class="flight-duration-line"></div>
+                                    </div>
+                                    <div class="flight-time-col right">
+                                        <div class="flight-time">${f.returnArrivalTime}</div>
+                                        <div class="flight-station">${f.returnArrivalStation}</div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                ${!flightHidden.includes('returnAirline') ? `
+                                <div class="flight-airline">
+                                    <svg viewBox="0 0 24 24" fill="#E62C25">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.82 14.6l-5.32-3.8v4.4L7.5 15.6V8.4L10.5 7v4.4l5.32-3.8v8.6z"/>
+                                    </svg>
+                                    <span>${f.returnAirline}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                            ` : ''}
+                            ${!flightHidden.includes('tags') || !flightHidden.includes('oldPrice') || !flightHidden.includes('currentPrice') || !flightHidden.includes('discount') || !flightHidden.includes('bookBtnText') ? `
+                            <div class="flight-divider"></div>
+                            <div class="flight-footer">
+                                ${!flightHidden.includes('tags') ? `
+                                <div class="flight-tags">
+                                    ${f.tags.map(t => `<span class="flight-tag-item">${t}</span>`).join('')}
+                                </div>
+                                ` : ''}
+                                ${!flightHidden.includes('oldPrice') || !flightHidden.includes('currentPrice') || !flightHidden.includes('discount') ? `
+                                <div class="flight-price-row">
+                                    <div class="flight-price-info">
+                                        <div class="flight-price-main">
+                                            ${!flightHidden.includes('oldPrice') ? `<span class="flight-old-price">¥${f.oldPrice}</span>` : ''}
+                                            ${!flightHidden.includes('currentPrice') ? `
+                                            <span class="flight-current-price-symbol">¥</span>
+                                            <span class="flight-current-price">${f.currentPrice}</span>
+                                            ` : ''}
+                                        </div>
+                                        ${!flightHidden.includes('discount') ? `
+                                        <div class="flight-discount-row">
+                                            <span>千问专享</span>
+                                            <div class="flight-discount-border"></div>
+                                            <span>${f.discount}</span>
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                    ${!flightHidden.includes('bookBtnText') ? `<button class="book-btn">${f.bookBtnText || '预订'}</button>` : ''}
+                                </div>
+                                ` : ''}
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                case 'flightMoreBtn':
+                    return `<div class="flight-more-btn">${module.data.text}</div>`;
+                    
+                case 'trainCard':
+                    const t = module.data;
+                    const trainHidden = t._hiddenFields || [];
+                    return `
+                        <div class="train-card">
+                            ${!trainHidden.includes('header') ? `
+                            <div class="train-header">
+                                <div class="train-icon">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                      <path d="M12 2c-4 0-8 1-8 6v9.5C4 18.9 5.1 20 6.5 20L5 21.5V22h14v-.5L17.5 20c1.4 0 2.5-1.1 2.5-2.5V8c0-5-4-6-8-6zm-4.5 14C6.7 16 6 15.3 6 14.5S6.7 13 7.5 13 9 13.7 9 14.5 8.3 16 7.5 16zm9 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zM19 10H5V7h14v3z"/>
+                                    </svg>
+                                </div>
+                                <span>${t.header}</span>
+                            </div>
+                            ` : ''}
+                            <div class="train-body">
+                                <div class="train-route-info">
+                                    ${!trainHidden.includes('departureTime') && !trainHidden.includes('departureStation') ? `
+                                    <div class="train-time-col">
+                                        <div class="train-time">${t.departureTime}</div>
+                                        <div class="train-station">${t.departureStation}</div>
+                                        ${!trainHidden.includes('trainNo') ? `<div class="train-no">${t.trainNo}</div>` : ''}
+                                    </div>
+                                    ` : ''}
+                                    ${!trainHidden.includes('duration') ? `
+                                    <div class="train-duration-col">
+                                        <div class="train-duration-text">${t.duration}</div>
+                                        <div class="train-duration-line"></div>
+                                    </div>
+                                    ` : ''}
+                                    ${!trainHidden.includes('arrivalTime') && !trainHidden.includes('arrivalStation') ? `
+                                    <div class="train-time-col align-center">
+                                        <div class="train-time">${t.arrivalTime}</div>
+                                        <div class="train-station">${t.arrivalStation}</div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                                <div class="train-action-col">
+                                    ${!trainHidden.includes('price') ? `
+                                    <div class="train-price">
+                                        <span class="train-price-symbol">¥</span>
+                                        <span class="train-price-value">${t.price}</span>
+                                    </div>
+                                    ` : ''}
+                                    ${!trainHidden.includes('bookBtnText') ? `<button class="book-btn">${t.bookBtnText || '预订'}</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'ticketCard':
+                    const tk = module.data;
+                    const ticketHidden = tk._hiddenFields || [];
+                    return `
+                        <div class="ticket-card">
+                            ${!ticketHidden.includes('imageUrl') ? `
+                            <div class="ticket-image">
+                                <img src="${tk.imageUrl}" alt="${tk.title}">
+                            </div>
+                            ` : ''}
+                            <div class="ticket-info">
+                                <div class="ticket-info-top">
+                                    ${!ticketHidden.includes('title') ? `<div class="ticket-title">${tk.title}</div>` : ''}
+                                    ${!ticketHidden.includes('rating') || !ticketHidden.includes('desc') ? `
+                                    <div class="ticket-sub-row">
+                                        ${!ticketHidden.includes('rating') ? `<span class="rating-blue">${tk.rating}</span>` : ''}
+                                        ${!ticketHidden.includes('desc') ? `<span class="ticket-desc">${tk.desc}</span>` : ''}
+                                    </div>
+                                    ` : ''}
+                                    ${!ticketHidden.includes('rank') ? `<div class="ticket-rank">${tk.rank}</div>` : ''}
+                                </div>
+                                <div class="ticket-info-bottom">
+                                    ${!ticketHidden.includes('price') ? `
+                                    <div class="ticket-price-area">
+                                        <span class="price-prefix">门票</span>
+                                        <span class="price-symbol">¥</span>
+                                        <span class="price-value">${tk.price}</span>
+                                        <span class="price-suffix">起</span>
+                                    </div>
+                                    ` : ''}
+                                    ${!ticketHidden.includes('bookBtnText') ? `<button class="book-btn">${tk.bookBtnText || '预订'}</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'mapCard':
+                    const m = module.data;
+                    return `
+                        <div class="map-card">
+                            <img class="map-image" src="${m.imageUrl}" alt="${m.title || '地图'}">
+                            ${m.title ? `<div class="map-title">${m.title}</div>` : ''}
+                        </div>
+                    `;
+                    
+                case 'followUp':
+                    return `<div class="follow-up-text">${module.data.text}</div>`;
+                    
+                case 'suggestionPills':
+                    return `
+                        <div class="suggestion-pills">
+                            ${module.data.pills.map(pill => `
+                                <div class="suggestion-pill">
+                                    <span>${pill}</span>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                                    </svg>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                default:
+                    return '';
+            }
+        }
+        
+        // 更新字段
+        function updateField(moduleIndex, fieldKey, value) {
+            appData.modules[moduleIndex].data[fieldKey] = value;
+            renderPreview();
+        }
+        
+        // 切换字段可见性
+        function toggleFieldVisibility(moduleIndex, fieldKey) {
+            const module = appData.modules[moduleIndex];
+            if (!module.data._hiddenFields) {
+                module.data._hiddenFields = [];
+            }
+            
+            const hiddenIndex = module.data._hiddenFields.indexOf(fieldKey);
+            if (hiddenIndex > -1) {
+                // 显示字段
+                module.data._hiddenFields.splice(hiddenIndex, 1);
+            } else {
+                // 隐藏字段
+                module.data._hiddenFields.push(fieldKey);
+            }
+            
+            renderEditor();
+            renderPreview();
+        }
+        
+        // 更新数组字段
+        function updateArrayField(moduleIndex, fieldKey, value) {
+            appData.modules[moduleIndex].data[fieldKey] = value.split(',').map(s => s.trim()).filter(s => s);
+            renderPreview();
+        }
+        
+        // 复制模块
+        function copyModule(index) {
+            clipboard = JSON.parse(JSON.stringify(appData.modules[index]));
+            showToast('已复制模块');
+        }
+        
+        // 粘贴模块
+        function pasteModule(index) {
+            if (!clipboard) {
+                showToast('请先复制一个模块');
+                return;
+            }
+            
+            const newModule = JSON.parse(JSON.stringify(clipboard));
+            newModule.id = `${newModule.type}-${Date.now()}`;
+            appData.modules.splice(index + 1, 0, newModule);
+            renderEditor();
+            renderPreview();
+            showToast('已粘贴模块');
+        }
+        
+        // 删除模块
+        function deleteModule(index) {
+            if (confirm('确定要删除这个模块吗？')) {
+                appData.modules.splice(index, 1);
+                renderEditor();
+                renderPreview();
+                showToast('已删除模块');
+            }
+        }
+        
+        // 添加模块
+        function addModule(moduleType) {
+            const moduleConfigs = {
+                'userMessage': {
+                    name: '用户消息',
+                    data: { text: '新的用户消息' }
+                },
+                'aiText': {
+                    name: 'AI 文本',
+                    data: { text: '这是 AI 回复的文本内容' }
+                },
+                'aiHeading': {
+                    name: 'AI 标题',
+                    data: { text: '新的小标题' }
+                },
+                'hotelCard': {
+                    name: '酒店卡片',
+                    data: {
+                        imageUrl: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 140\'%3E%3Cdefs%3E%3ClinearGradient id=\'sky\' x1=\'0%25\' y1=\'0%25\' x2=\'0%25\' y2=\'100%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%239CD0FF\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%23EAF4FF\'/%3E%3C/linearGradient%3E%3ClinearGradient id=\'build\' x1=\'0%25\' y1=\'0%25\' x2=\'100%25\' y2=\'0%25\'%3E%3Cstop offset=\'0%25\' stop-color=\'%23E67A5A\'/%3E%3Cstop offset=\'50%25\' stop-color=\'%23C14E34\'/%3E%3Cstop offset=\'100%25\' stop-color=\'%238F2B15\'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=\'100\' height=\'140\' fill=\'url(%23sky)\'/%3E%3Cpath d=\'M10,40 L90,20 L90,140 L10,140 Z\' fill=\'url(%23build)\'/%3E%3C/svg%3E',
+                        name: '新酒店名称',
+                        tag: '豪华型',
+                        rating: '4.8 | 超棒',
+                        rank: '区域热门榜·第 N 名',
+                        benefit: '会员权益',
+                        location: '核心商圈',
+                        price: '999',
+                        discount: '优惠¥100',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                'flightCard': {
+                    name: '机票卡片',
+                    data: {
+                        departureLabel: '去程机票 | 日期 出发地 - 目的地',
+                        departureTime: '10:00',
+                        departureStation: '出发机场 T3',
+                        duration: '总 3h',
+                        arrivalTime: '13:00',
+                        arrivalStation: '到达机场',
+                        airline: '航空公司 CA123',
+                        returnLabel: '返程机票 | 日期 出发地 - 目的地',
+                        returnTime: '15:00',
+                        returnStation: '出发机场',
+                        returnDuration: '总 3h',
+                        returnArrivalTime: '18:00',
+                        returnArrivalStation: '到达机场 T3',
+                        returnAirline: '航空公司 CA456',
+                        tags: ['经济舱', '托运行李 20 公斤'],
+                        oldPrice: '2000',
+                        currentPrice: '1800',
+                        discount: '优惠¥200',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                'trainCard': {
+                    name: '火车票卡片',
+                    data: {
+                        header: '火车 | 日期 出发地 - 目的地',
+                        departureTime: '08:00',
+                        departureStation: '出发站',
+                        trainNo: '高铁 G123',
+                        duration: '总 4h',
+                        arrivalTime: '12:00',
+                        arrivalStation: '到达站',
+                        price: '500',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                'ticketCard': {
+                    name: '门票卡片',
+                    data: {
+                        imageUrl: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 140\'%3E%3Crect width=\'100\' height=\'140\' fill=\'%236B8E83\'/%3E%3C/svg%3E',
+                        title: '新景点名称',
+                        rating: '4.7 | 超棒',
+                        desc: '区域·5A 景区',
+                        rank: '热门榜·第 N 名',
+                        price: '100',
+                        bookBtnText: '预订',
+                        _hiddenFields: []
+                    }
+                },
+                'mapCard': {
+                    name: '地图',
+                    data: {
+                        imageUrl: 'https://img.alicdn.com/imgextra/i1/O1CN01wfgo7r26m21a4zlfL_!!6000000007703-2-tps-1380-1864.png',
+                        title: '地图标题'
+                    }
+                },
+                'followUp': {
+                    name: '追问文本',
+                    data: { text: '您更倾向于哪个选择呢？或者您有什么特别的要求吗？' }
+                },
+                'suggestionPills': {
+                    name: '建议选项',
+                    data: { pills: ['推荐选项一', '推荐选项二', '推荐选项三'] }
+                }
+            };
+            
+            const config = moduleConfigs[moduleType];
+            if (!config) return;
+            
+            const newModule = {
+                id: `${moduleType}-${Date.now()}`,
+                type: moduleType,
+                name: config.name,
+                data: config.data
+            };
+            
+            appData.modules.push(newModule);
+            renderEditor();
+            renderPreview();
+            
+            // 滚动到最后一个模块
+            setTimeout(() => {
+                const editorContent = document.getElementById('editorContent');
+                editorContent.scrollTop = editorContent.scrollHeight;
+            }, 100);
+            
+            showToast(`已添加${config.name}`);
+        }
+        
+        // 切换模式
+        function switchMode(mode) {
+            currentMode = mode;
+            const editorPanel = document.querySelector('.editor-panel');
+            const previewPanel = document.querySelector('.preview-panel');
+            const btns = document.querySelectorAll('.mode-btn');
+            const mainBackBtn = document.getElementById('mainBackBtn');
+            const previewBackBar = document.getElementById('previewBackBar');
+            const addModuleBar = document.getElementById('addModuleBar');
+            
+            if (mode === 'preview') {
+                editorPanel.style.display = 'none';
+                previewPanel.style.width = '100%';
+                previewBackBar.classList.add('show');
+                addModuleBar.style.display = 'none';
+            } else {
+                editorPanel.style.display = 'flex';
+                previewPanel.style.width = '50%';
+                previewBackBar.classList.remove('show');
+                addModuleBar.style.display = 'block';
+            }
+            
+            btns.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        
+        // 返回编辑模式
+        function backToEdit() {
+            const editorPanel = document.querySelector('.editor-panel');
+            const previewPanel = document.querySelector('.preview-panel');
+            const previewBackBar = document.getElementById('previewBackBar');
+            const editBtn = document.querySelector('.mode-btn:first-child');
+            
+            editorPanel.style.display = 'flex';
+            previewPanel.style.width = '50%';
+            previewBackBar.classList.remove('show');
+            
+            // 更新按钮状态
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            editBtn.classList.add('active');
+            
+            currentMode = 'edit';
+        }
+        
+        // 显示 Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+        
+        // 下载页面
+        function downloadPage() {
+            // 生成纯预览的 HTML 内容
+            const htmlContent = generateStandaloneHTML();
+            
+            // 创建 Blob 并下载
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `飞猪千问-demo-${Date.now()}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('页面已下载，可在浏览器中打开');
+        }
+        
+        // 保存到父页面（内嵌模式）
+        function saveToParent() {
+            if (!isEmbeddedMode || !parentCallback) {
+                showToast('非内嵌模式，无法保存');
+                return;
+            }
+            
+            // 显示保存对话框
+            openSaveDialog();
+        }
+        
+        // 打开保存对话框
+        function openSaveDialog() {
+            const overlay = document.getElementById('saveDialogOverlay');
+            const nameInput = document.getElementById('savePageName');
+            
+            // 重置为默认值
+            document.getElementById('savePageWidth').value = '375';
+            document.getElementById('savePageHeight').value = '812';
+            nameInput.value = '';
+            
+            overlay.classList.add('active');
+            setTimeout(() => nameInput.focus(), 100);
+        }
+        
+        // 关闭保存对话框
+        function closeSaveDialog() {
+            const overlay = document.getElementById('saveDialogOverlay');
+            overlay.classList.remove('active');
+        }
+        
+        // 确认保存
+        function confirmSaveToParent() {
+            const pageName = document.getElementById('savePageName').value.trim();
+            const width = parseInt(document.getElementById('savePageWidth').value) || 375;
+            const height = parseInt(document.getElementById('savePageHeight').value) || 812;
+            
+            if (!pageName) {
+                showToast('请输入页面名称');
+                return;
+            }
+            
+            // 生成预览 HTML
+            const previewHtml = generateStandaloneHTML();
+            
+            // 计算总高度
+            const chatContent = document.getElementById('chatContent');
+            const inputBarContainer = document.querySelector('.input-bar-container');
+            let totalHeight = height;
+            
+            if (chatContent) {
+                const contentHeight = chatContent.scrollHeight;
+                const inputHeight = inputBarContainer ? inputBarContainer.offsetHeight : 80;
+                const headerHeight = 140;
+                totalHeight = Math.max(height, headerHeight + contentHeight + inputHeight + 40);
+            }
+            
+            // 准备数据
+            const pageData = {
+                pageName: pageName,
+                modules: JSON.parse(JSON.stringify(appData.modules)),
+                previewHtml: previewHtml,
+                totalHeight: totalHeight,
+                displayWidth: width,  // 保存显示宽度
+                displayHeight: height, // 保存显示高度
+                timestamp: Date.now()
+            };
+            
+            // 检查是否是编辑现有页面（通过 storageKey 判断）
+            const isEdit = storageKey !== null;
+            
+            console.log('保存模式:', isEdit ? '编辑模式' : '新增模式', 'storageKey:', storageKey);
+            
+            // 关闭对话框
+            closeSaveDialog();
+            
+            // 添加到动画类
+            document.body.classList.add('saving');
+            
+            console.log('发送消息到父页面:', {
+                type: isEdit ? 'pageUpdated' : 'pageSaved',
+                data: pageData
+            });
+            
+            // 发送到父页面
+            window.parent.postMessage({
+                type: isEdit ? 'pageUpdated' : 'pageSaved',
+                data: pageData
+            }, parentCallback);
+            
+            showToast(isEdit ? '页面已更新' : '页面已保存到画板');
+            
+            // 延迟关闭编辑器（让父页面有时间接收消息）
+            setTimeout(() => {
+                document.body.classList.remove('saving');
+            }, 300);
+        }
+        
+        // 返回原始页面
+        function backToOriginal() {
+            if (confirm('确定要返回原始页面吗？未保存的修改将会丢失。')) {
+                window.location.href = 'f-p-demo.html';
+            }
+        }
+        
+        // 生成独立的 HTML 文件
+        function generateStandaloneHTML() {
+            const previewContent = appData.modules.map(m => renderModulePreview(m)).join('\n            ');
+            
+            return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>飞猪千问</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #E8E8E8;
+            color: #0F131A;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .phone-container {
+            width: 100%;
+            max-width: 430px;
+            background-color: #F7F8FA;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+        }
+        .bottom-bg-image {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .bottom-bg-image img {
+            width: 100%;
+            display: block;
+        }
+        .header-wrapper {
+            position: sticky;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #F7F8FA;
+            z-index: 100;
+        }
+        .status-bar {
+            height: 44px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px 0 24px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .status-icons {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 16px 12px;
+            position: relative;
+        }
+        .header-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+        .header-icon:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        .header-icon svg {
+            width: 24px;
+            height: 24px;
+            color: #1a1a1a;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0F131A;
+            letter-spacing: 0.5px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .chat-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 16px 120px;
+            position: relative;
+            z-index: 1;
+            -webkit-overflow-scrolling: touch;
+        }
+        .chat-content::-webkit-scrollbar {
+            display: none;
+        }
+        .user-message {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 24px;
+        }
+        .user-bubble {
+            background: #F1EDFF;
+            border-radius: 20px 20px 20px 20px;
+            padding: 12px 16px;
+            max-width: 85%;
+            font-size: 17px;
+            line-height: 1.5;
+            color: #0F131A;
+        }
+        .ai-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .ai-heading-1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            margin-top: 10px;
+        }
+        .ai-text-body {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 24px;
+        }
+        .hotel-name-section {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+        .recommend-reason {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .recommend-reason strong {
+            font-weight: 600;
+        }
+        .hotel-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+        .hotel-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .hotel-image {
+            width: 80px;
+            height: 110px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background-color: #f0f0f0;
+        }
+        .hotel-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .hotel-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+        }
+        .hotel-info-top {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .hotel-card-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            line-height: 1.4;
+        }
+        .hotel-tag {
+            font-size: 11px;
+            color: #888;
+            background: #F5F5F5;
+            border-radius: 4px;
+            padding: 2px 6px;
+            white-space: nowrap;
+        }
+        .hotel-rating-row {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .rating-blue {
+            color: #6666FF;
+            font-weight: 500;
+            margin-right: 6px;
+        }
+        .rating-rank {
+            color: #666;
+            font-size: 12px;
+        }
+        .hotel-benefit, .hotel-location {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        .hotel-info-bottom {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .hotel-price-area {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .hotel-price {
+            display: flex;
+            align-items: baseline;
+            color: #1a1a1a;
+        }
+        .price-symbol {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .price-value {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+            margin: 0 2px;
+        }
+        .price-suffix {
+            font-size: 12px;
+            color: #666;
+        }
+        .price-discount {
+            font-size: 11px;
+            color: #FF4D00;
+            margin-top: 2px;
+        }
+        .book-btn {
+            background: #EBEBFF;
+            color: #6666FF;
+            border: none;
+            border-radius: 13px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .book-btn:hover {
+            background: #E3D8FF;
+            color: #553A80;
+        }
+        .flight-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 20px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .flight-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .flight-route {
+            margin-bottom: 16px;
+        }
+        .flight-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        .flight-icon {
+            width: 20px;
+            height: 20px;
+            background-color: #5C9CFF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .flight-icon svg {
+            width: 12px;
+            height: 12px;
+            fill: #FFF;
+        }
+        .flight-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .flight-time-col {
+            display: flex;
+            flex-direction: column;
+            width: 80px;
+        }
+        .flight-time-col.right {
+            align-items: flex-end;
+            text-align: right;
+        }
+        .flight-time {
+            font-size: 22px;
+            font-weight: bold;
+            color: #111;
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+        .flight-station {
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+        }
+        .flight-duration-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 16px;
+            margin-top: 6px;
+        }
+        .flight-duration-text {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+        .flight-duration-line {
+            width: 100%;
+            height: 1px;
+            background-color: #E5E5E5;
+            position: relative;
+        }
+        .flight-duration-line::before,
+        .flight-duration-line::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            width: 1px;
+            height: 4px;
+            background-color: #E5E5E5;
+        }
+        .flight-duration-line::before { left: 0; }
+        .flight-duration-line::after { right: 0; }
+        .flight-airline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #888;
+        }
+        .flight-airline svg {
+            width: 14px;
+            height: 14px;
+        }
+        .flight-divider {
+            height: 1px;
+            background-color: #F0F0F0;
+            margin: 20px 0;
+        }
+        .flight-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 4px;
+        }
+        .flight-tags {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 13px;
+            color: #333;
+        }
+        .flight-tag-item {
+            display: flex;
+            align-items: center;
+        }
+        .flight-tag-item:not(:last-child)::after {
+            content: '';
+            display: inline-block;
+            width: 1px;
+            height: 10px;
+            background-color: #DDD;
+            margin-left: 8px;
+        }
+        .flight-price-row {
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-end;
+            gap: 12px;
+        }
+        .flight-price-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .flight-price-main {
+            display: flex;
+            align-items: baseline;
+        }
+        .flight-old-price {
+            font-size: 14px;
+            color: #999;
+            text-decoration: line-through;
+            margin-right: 6px;
+        }
+        .flight-current-price-symbol {
+            font-size: 14px;
+            font-weight: bold;
+            color: #111;
+        }
+        .flight-current-price {
+            font-size: 26px;
+            font-weight: bold;
+            color: #111;
+            line-height: 1;
+        }
+        .flight-discount-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            color: #FF4D00;
+            font-size: 12px;
+        }
+        .flight-discount-border {
+            border-left: 1px dashed #FF4D00;
+            height: 10px;
+            opacity: 0.5;
+        }
+        .flight-more-btn {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .flight-more-btn:hover {
+            background: #F8F9FA;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .train-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 20px 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .train-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .train-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 16px;
+        }
+        .train-icon {
+            width: 20px;
+            height: 20px;
+            background-color: #66C271;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .train-icon svg {
+            width: 12px;
+            height: 12px;
+            fill: #FFF;
+        }
+        .train-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .train-route-info {
+            display: flex;
+            flex: 1;
+            margin-right: 30px;
+        }
+        .train-time-col {
+            display: flex;
+            flex-direction: column;
+        }
+        .train-time-col.align-center {
+            align-items: center;
+        }
+        .train-time {
+            font-size: 22px;
+            font-weight: 700;
+            color: #111;
+            line-height: 1.1;
+            margin-bottom: 4px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .train-station {
+            font-size: 14px;
+            color: #111;
+            white-space: nowrap;
+            margin-bottom: 8px;
+        }
+        .train-no {
+            font-size: 13px;
+            color: #999;
+        }
+        .train-duration-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 10px;
+            margin-top: 6px;
+        }
+        .train-duration-text {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+        .train-duration-line {
+            width: 100%;
+            height: 1px;
+            background-color: #E5E5E5;
+            position: relative;
+        }
+        .train-duration-line::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -3px;
+            width: 6px;
+            height: 6px;
+            border-top: 1.5px solid #E5E5E5;
+            border-right: 1.5px solid #E5E5E5;
+            transform: rotate(45deg);
+        }
+        .train-action-col {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            margin-left: 12px;
+        }
+        .train-price {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+        .train-price-symbol {
+            font-size: 14px;
+            font-weight: bold;
+            color: #111;
+            margin-right: 2px;
+        }
+        .train-price-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111;
+            line-height: 1;
+            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .ticket-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+        .ticket-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .ticket-image {
+            width: 80px;
+            height: 110px;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background-color: #f0f0f0;
+        }
+        .ticket-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .ticket-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+            padding: 4px 0;
+        }
+        .ticket-info-top {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .ticket-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111;
+            line-height: 1.3;
+        }
+        .ticket-sub-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+        .ticket-desc {
+            color: #666;
+        }
+        .ticket-rank {
+            font-size: 12px;
+            color: #666;
+        }
+        .ticket-info-bottom {
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-end;
+            gap: 12px;
+        }
+        .ticket-price-area {
+            display: flex;
+            align-items: baseline;
+            color: #111;
+        }
+        .ticket-price-area .price-prefix {
+            font-size: 13px;
+            color: #333;
+            margin-right: 4px;
+        }
+        .ticket-price-area .price-value {
+            font-size: 24px;
+        }
+        .map-card {
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .map-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .map-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .map-title {
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            background: #fafafa;
+            border-top: 1px solid #f0f0f0;
+        }
+        .ai-footer-wrapper {
+            margin-bottom: 24px;
+        }
+        .ai-disclaimer {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+        .ai-footer-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .action-group {
+            display: flex;
+            gap: 8px;
+        }
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid #EAEAEA;
+            background: #FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .action-btn:hover {
+            background: #F5F5F5;
+            border-color: #D0D0D0;
+        }
+        .action-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+        .follow-up-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+        .suggestion-pills {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .suggestion-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: #FFF;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #0F131A;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            align-self: flex-start;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid #e2e3e4;
+        }
+        .suggestion-pill:hover {
+            background: #F8F5FF;
+            border-color: #E3D8FF;
+            color: #6A4C9C;
+            transform: translateX(4px);
+        }
+        .suggestion-pill svg {
+            width: 16px;
+            height: 16px;
+            color: #CCC;
+            transition: color 0.2s ease;
+        }
+        .suggestion-pill:hover svg {
+            color: #6A4C9C;
+        }
+        .bottom-fixed-area {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            pointer-events: none;
+            padding-bottom: 24px;
+        }
+        .bottom-fixed-area > * {
+            pointer-events: auto;
+        }
+        .input-bar-container {
+            padding: 0 16px;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            background: #FFFFFF;
+            border: 1.5px solid #6C5CE7;
+            border-radius: 22px;
+            height: 58px;
+            padding: 0 16px 0 20px;
+            gap: 12px;
+            max-width: 430px;
+            margin: 0 auto;
+        }
+        .voice-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #111;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-right: 4px;
+        }
+        .voice-icon:hover {
+            transform: scale(1.1);
+        }
+        .input-text {
+            flex: 1;
+            font-size: 16px;
+            color: #8A8A8E;
+            user-select: none;
+        }
+        .input-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .action-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #111;
+            cursor: pointer;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .action-icon:hover {
+            opacity: 0.7;
+            transform: scale(1.05);
+        }
+        @media (max-width: 430px) {
+            .phone-container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-container">
+        <div class="bottom-bg-image">
+            <img src="https://img.alicdn.com/imgextra/i1/O1CN01VqGz7U1TQGBGN9JpS_!!6000000002376-2-tps-1500-1120.png" alt="底部背景图">
+        </div>
+        
+        <div class="header-wrapper">
+            <div class="status-bar">
+                <div>9:41</div>
+                <div class="status-icons">
+                    <svg width="18" height="12" viewBox="0 0 18 12" fill="#1a1a1a">
+                        <rect x="0" y="8" width="3" height="4" rx="1"/>
+                        <rect x="5" y="5" width="3" height="7" rx="1"/>
+                        <rect x="10" y="2" width="3" height="10" rx="1"/>
+                        <rect x="15" y="0" width="3" height="12" rx="1"/>
+                    </svg>
+                    <svg width="16" height="12" viewBox="0 0 16 12" fill="#1a1a1a">
+                        <path d="M8 12C8.6 12 9 11.6 9 11C9 10.4 8.6 10 8 10C7.4 10 7 10.4 7 11C7 11.6 7.4 12 8 12Z"/>
+                        <path d="M8 6.5C6.1 6.5 4.4 7.2 3.1 8.3L4.5 9.7C5.5 8.9 6.7 8.5 8 8.5C9.3 8.5 10.5 8.9 11.5 9.7L12.9 8.3C11.6 7.2 9.9 6.5 8 6.5Z"/>
+                        <path d="M8 3C5.1 3 2.5 4.1 0.5 5.8L1.9 7.2C3.6 5.8 5.7 5 8 5C10.3 5 12.4 5.8 14.1 7.2L15.5 5.8C13.5 4.1 10.9 3 8 3Z"/>
+                    </svg>
+                    <svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="#1a1a1a" stroke-width="1.2">
+                        <rect x="1" y="1" width="19" height="10" rx="3"/>
+                        <path d="M23 4V8" stroke-linecap="round"/>
+                        <rect x="3" y="3" width="15" height="6" rx="1.5" fill="#1a1a1a"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="header">
+                <div class="header-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="4" y1="8" x2="20" y2="8"></line>
+                        <line x1="4" y1="16" x2="14" y2="16"></line>
+                    </svg>
+                </div>
+                <div class="header-title">飞猪千问</div>
+                <div class="header-right">
+                    <div class="header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 10V16C20 18.2 18.2 20 16 20H8.5L4 22V8C4 5.8 5.8 4 8 4H14"></path>
+                            <path d="M17 4V8M15 6H19"></path>
+                        </svg>
+                    </div>
+                    <div class="header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-content">
+            ${previewContent}
+        </div>
+
+        <div class="bottom-fixed-area">
+            <div class="input-bar-container">
+                <div class="input-wrapper">
+                    <div class="voice-icon">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5.5 12h.01" stroke-width="4"></path>
+                            <path d="M9.5 9.5a3.5 3.5 0 0 1 0 5" stroke-width="2"></path>
+                            <path d="M13.5 6.5a7.5 7.5 0 0 1 0 11" stroke-width="2"></path>
+                        </svg>
+                    </div>
+                    <div class="input-text">发消息或者按住说话...</div>
+                    <div class="input-actions">
+                        <div class="action-icon">
+                            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="8" width="18" height="12" rx="3.5"></rect>
+                                <path d="M7.5 8L9 5h6l1.5 3"></path>
+                                <circle cx="12" cy="14" r="3"></circle>
+                            </svg>
+                        </div>
+                        <div class="action-icon">
+                            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="7.5" x2="12" y2="16.5"></line>
+                                <line x1="7.5" y1="12" x2="16.5" y2="12"></line>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+        
+        // 启动
+        init();
+    </script>
+</body>
+</html>
